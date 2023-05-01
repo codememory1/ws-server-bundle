@@ -1,0 +1,22 @@
+{
+    "name": "codememory/ws-server-bundle",
+    "type": "symfony-bundle",
+    "autoload": {
+        "psr-4": {
+            "Codememory\\WebSocketServerBundle\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Codememory",
+            "email": "kostynd1@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "ext-openswoole": "*",
+        "symfony/console": "6.2.*",
+        "predis/predis": "*",
+        "symfony/event-dispatcher": "6.2.*"
+    }
+}
