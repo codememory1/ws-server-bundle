@@ -19,8 +19,15 @@ final class WebSocketServerCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): void
     {
         $style = new SymfonyStyle($input, $output);
+        $listening = sprintf(
+            '%s://%s:%s',
+            $this->server->getProtocol(),
+            $this->server->getHost(),
+            $this->server->getPort()
+        );
 
-        $style->info('Сервер запущен');
+        $style->info('The server is successful running');
+        $style->text("Listening: <fg=bright-cyan>{$listening}</>");
 
         $this->server->start();
     }
