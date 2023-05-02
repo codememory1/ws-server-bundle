@@ -9,6 +9,7 @@ use LogicException;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 final class AddMessageEventHandlerPass implements CompilerPassInterface
 {
@@ -28,7 +29,8 @@ final class AddMessageEventHandlerPass implements CompilerPassInterface
         $container
             ->register(ExecuteMessageEventTypeEventListener::class, ExecuteMessageEventTypeEventListener::class)
             ->setArguments([
-                '$handlers' => $references
+                '$handlers' => $references,
+                '$eventDispatcher' => new Reference(EventDispatcherInterface::class)
             ])
             ->addTag('kernel.event_listener', [
                 'event' => MessageEvent::NAME,
