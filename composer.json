@@ -18,6 +18,7 @@
         "symfony/console": "6.2.*",
         "predis/predis": "*",
         "symfony/event-dispatcher": "6.2.*",
-        "openswoole/core": "^22.1"
+        "openswoole/core": "^22.1",
+        "openswoole/ide-helper": "*"
     }
 }
