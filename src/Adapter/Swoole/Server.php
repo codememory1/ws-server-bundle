@@ -6,6 +6,7 @@ use Codememory\WebSocketServerBundle\Enum\Opcode;
 use Codememory\WebSocketServerBundle\Event\ConnectEvent;
 use Codememory\WebSocketServerBundle\Event\ConnectionClosedEvent;
 use Codememory\WebSocketServerBundle\Event\MessageEvent;
+use Codememory\WebSocketServerBundle\Event\StartEvent;
 use Codememory\WebSocketServerBundle\Interfaces\ConnectionRequestInterface;
 use Codememory\WebSocketServerBundle\Interfaces\ConnectionStorageInterface;
 use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
@@ -123,6 +124,8 @@ final class Server implements ServerInterface
         $this->onMessage();
         $this->onClose();
 
+        $this->eventDispatcher->dispatch(new StartEvent($this), StartEvent::NAME);
+        
         /** @var Process $process */
         foreach ($this->process as $process) {
             $this->server->addProcess($process);
