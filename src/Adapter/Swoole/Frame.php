@@ -35,28 +35,34 @@ final class Frame implements FrameInterface
 
     public function getData(): array
     {
-        return $this->getFullData()['data'] ?? [];
+        $data = $this->getFullData()['data'] ?? [];
+
+        return !is_array($data) ? [$data] : $data;
     }
 
     public function getHeaders(): array
     {
-        return $this->getFullData()['headers'] ?? [];
+        $headers = $this->getFullData()['headers'] ?? [];
+
+        return !is_array($headers) ? [] : $headers;
     }
 
     public function getEventType(): ?string
     {
-        return $this->getFullData()['event'] ?? null;
+        $event = $this->getFullData()['event'] ?? null;
+
+        return null === $event ? null : (string) $event;
     }
 
     public function dataIsValid(): bool
     {
-        return (bool) (array_key_exists('event', $this->getFullData())
+        return array_key_exists('event', $this->getFullData())
             && array_key_exists('headers', $this->getFullData())
             && array_key_exists('data', $this->getFullData())
             && is_string($this->getEventType())
             && !empty($this->getEventType())
             && is_array($this->getData())
-            && is_array($this->getHeaders()));
+            && is_array($this->getHeaders());
     }
 
     public function getOpcode(): ?Opcode
