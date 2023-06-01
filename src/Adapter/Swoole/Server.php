@@ -82,12 +82,18 @@ final class Server implements ServerInterface
             Opcode::PONG => 10
         };
 
-        $is = $this->server?->push($connectionRequest->getConnectionId(), json_encode([
-            'event' => $event,
-            'data' => $data
-        ]), $opcode, $flags);
+        if ($this->server->exists($connectionRequest->getConnectionId())) {
+            $is = $this->server?->push($connectionRequest->getConnectionId(), json_encode([
+                'event' => $event,
+                'data' => $data
+            ]), $opcode, $flags);
 
-        return null === $is ? false : $is;
+            return null === $is ? false : $is;
+        }
+
+        $this->connectionStorage->deleteConnection($connectionRequest->getConnectionId());
+
+        return false;
     }
 
     public function disconnect(ConnectionRequestInterface $connectionRequest, ?int $code = null, ?string $reason = null): bool
