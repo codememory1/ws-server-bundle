@@ -6,6 +6,7 @@ use Codememory\WebSocketServerBundle\Enum\Opcode;
 use Codememory\WebSocketServerBundle\Event\ConnectEvent;
 use Codememory\WebSocketServerBundle\Event\ConnectionClosedEvent;
 use Codememory\WebSocketServerBundle\Event\MessageEvent;
+use Codememory\WebSocketServerBundle\Event\StartEvent;
 use Codememory\WebSocketServerBundle\Interfaces\ConnectionRequestInterface;
 use Codememory\WebSocketServerBundle\Interfaces\ConnectionStorageInterface;
 use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
@@ -81,12 +82,18 @@ final class Server implements ServerInterface
             Opcode::PONG => 10
         };
 
-        $is = $this->server?->push($connectionRequest->getConnectionId(), json_encode([
-            'event' => $event,
-            'data' => $data
-        ]), $opcode, $flags);
+        if ($this->server->exists($connectionRequest->getConnectionId())) {
+            $is = $this->server?->push($connectionRequest->getConnectionId(), json_encode([
+                'event' => $event,
+                'data' => $data
+            ]), $opcode, $flags);
 
-        return null === $is ? false : $is;
+            return null === $is ? false : $is;
+        }
+
+        $this->connectionStorage->deleteConnection($connectionRequest->getConnectionId());
+
+        return false;
     }
 
     public function disconnect(ConnectionRequestInterface $connectionRequest, ?int $code = null, ?string $reason = null): bool
@@ -123,6 +130,8 @@ final class Server implements ServerInterface
         $this->onMessage();
         $this->onClose();
 
+        $this->eventDispatcher->dispatch(new StartEvent($this), StartEvent::NAME);
+        
         /** @var Process $process */
         foreach ($this->process as $process) {
             $this->server->addProcess($process);

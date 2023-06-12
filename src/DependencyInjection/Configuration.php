@@ -61,7 +61,7 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                         ->scalarNode('connection_storage_service')
                             ->cannotBeEmpty()
-                            ->defaultValue(ConnectionRedisStorage::class)
+                            ->isRequired()
                             ->info('Connection storage service ID')
                         ->end()
                     ->end()

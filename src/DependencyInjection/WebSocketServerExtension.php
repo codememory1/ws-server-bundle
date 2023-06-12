@@ -3,7 +3,10 @@
 namespace Codememory\WebSocketServerBundle\DependencyInjection;
 
 use Codememory\WebSocketServerBundle\Command\WebSocketServerCommand;
+use Codememory\WebSocketServerBundle\Event\MessageHandlerExceptionEvent;
+use Codememory\WebSocketServerBundle\EventListener\MessageHandlerException\SaveExceptionToLogEventListener;
 use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Reference;
@@ -48,6 +51,19 @@ final class WebSocketServerExtension extends Extension
             ])
             ->addMethodCall('setPort', [
                 '$port' => $server['port']
+            ]);
+    }
+
+    private function registerSaveExceptionToLogEventListener(ContainerBuilder $container): void
+    {
+        $container
+            ->register(SaveExceptionToLogEventListener::class, SaveExceptionToLogEventListener::class)
+            ->setArguments([
+                '$logger' => new Reference(LoggerInterface::class)
+            ])
+            ->addTag('kernel.event_listener', [
+                'event' => MessageHandlerExceptionEvent::NAME,
+                'method' => 'onMessageHandlerException'
             ]);
     }
 }
