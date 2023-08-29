@@ -4,12 +4,14 @@ namespace Codememory\WebSocketServerBundle\Server\Swoole;
 
 use Codememory\WebSocketServerBundle\Enum\CloseCode;
 use Codememory\WebSocketServerBundle\Enum\Opcode;
+use Codememory\WebSocketServerBundle\Enum\StatsMode;
 use Codememory\WebSocketServerBundle\Event\ConnectionClosedEvent;
 use Codememory\WebSocketServerBundle\Event\ConnectionOpenEvent;
 use Codememory\WebSocketServerBundle\Event\MessageEvent;
 use Codememory\WebSocketServerBundle\Event\MessageSentEvent;
 use Codememory\WebSocketServerBundle\Event\RemoveConnectionEvent;
 use Codememory\WebSocketServerBundle\Event\StartServerEvent;
+use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
 use Codememory\WebSocketServerBundle\Server\AbstractServer;
 use OpenSwoole\Http\Request as SwooleRequest;
 use OpenSwoole\Process;
@@ -45,7 +47,7 @@ class Server extends AbstractServer
 
         $isSuccess = false;
 
-        if ($this->server->exists($connectionID)) {
+        if ($this->existConnection($connectionID)) {
             $isSuccess = $this->server->push($connectionID, json_encode([
                 'event' => $event,
                 'data' => $data
@@ -61,18 +63,70 @@ class Server extends AbstractServer
         return $isSuccess;
     }
 
+    public function existConnection(int $id): bool
+    {
+        return null !== $this->server && $this->server->exists($id);
+    }
+
+    public function tick(int $ms, callable $callback): ServerInterface
+    {
+        $this->server?->tick($ms, $callback);
+
+        return $this;
+    }
+
+    public function getStats(StatsMode $mode = StatsMode::DEFAULT): array|string|false
+    {
+        return $this->server->stats($mode->value);
+    }
+
+    public function on(string $event, callable $callback): ServerInterface
+    {
+        $this->server?->on($event, $callback);
+
+        return $this;
+    }
+
+    public function task(mixed $data, int $dstWorkerID = -1, ?callable $finishCallback = null): ?int
+    {
+        return $this->server?->task($data, $dstWorkerID, $finishCallback);
+    }
+
+    public function taskWait(mixed $data, float $timeout = 0.5, int $dstWorkerID = -1): string|bool
+    {
+        return $this->server?->taskwait($data, $timeout, $dstWorkerID);
+    }
+
+    public function taskWaitMulti(array $tasks, float $timeout = 0.5): bool|array
+    {
+        return $this->server?->taskWaitMulti($tasks, $timeout);
+    }
+
+    public function toggleConnection(int $connectionID, bool $isPause = true): bool
+    {
+        if (null !== $this->server && $this->existConnection($connectionID)) {
+            return $isPause ? $this->server->pause($connectionID) : $this->server->resume($connectionID);
+        }
+
+        return false;
+    }
+
     public function start(): bool
     {
         $this->init();
 
         $this->eventDispatcher->dispatch(new StartServerEvent($this), StartServerEvent::NAME);
 
+        foreach ($this->processes as $callback) {
+            $this->server->addProcess(new Process($callback));
+        }
+
         return $this->server->start();
     }
 
     private function init(): void
     {
-        $this->server = new SwooleServer($this->URLBuilder->build($this->getProtocol(), $this->getHost(), $this->getPort()));
+        $this->server = new SwooleServer($this->URLBuilder->build($this->getProtocol(), $this->getHost()), $this->getPort());
 
         if ([] !== $this->getConfig()) {
             $this->server->set($this->getConfig());
@@ -81,10 +135,6 @@ class Server extends AbstractServer
         $this->onOpen();
         $this->onMessage();
         $this->onClose();
-
-        foreach ($this->processes as $callback) {
-            $this->server->addProcess(new Process($callback));
-        }
     }
 
     private function onOpen(): void

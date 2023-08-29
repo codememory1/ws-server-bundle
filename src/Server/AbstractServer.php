@@ -6,6 +6,7 @@ use Codememory\WebSocketServerBundle\Interfaces\ConnectionStorageInterface;
 use Codememory\WebSocketServerBundle\Interfaces\MessageConverterInterface;
 use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
 use Codememory\WebSocketServerBundle\Interfaces\URLBuilderInterface;
+use RuntimeException;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 abstract class AbstractServer implements ServerInterface
@@ -13,7 +14,6 @@ abstract class AbstractServer implements ServerInterface
     protected string $protocol = 'websocket';
     protected string $host = '0.0.0.0';
     protected int $port = 8079;
-    protected ?int $autoDisconnect = null;
     protected array $config = [];
     protected array $processes = [];
 
@@ -61,18 +61,6 @@ abstract class AbstractServer implements ServerInterface
         return $this;
     }
 
-    public function getAutoDisconnect(): ?int
-    {
-        return $this->autoDisconnect;
-    }
-
-    public function setAutoDisconnect(?int $seconds): ServerInterface
-    {
-        $this->autoDisconnect = $seconds;
-
-        return $this;
-    }
-
     public function getConfig(): array
     {
         return $this->config;
@@ -90,5 +78,10 @@ abstract class AbstractServer implements ServerInterface
         $this->processes[] = $callback;
 
         return $this;
+    }
+
+    public function tick(int $ms, callable $callback): ServerInterface
+    {
+        throw new RuntimeException(sprintf('Server "%s" does not support ticks', self::class));
     }
 }

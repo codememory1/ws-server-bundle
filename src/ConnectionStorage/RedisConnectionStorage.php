@@ -22,7 +22,7 @@ readonly class RedisConnectionStorage implements ConnectionStorageInterface
         $connections = [];
 
         foreach ($this->client->keys($this->buildKey('*')) as $key) {
-            $connection = json_decode($this->client->get($key));
+            $connection = json_decode($this->client->get($key), true);
 
             $connections[$connection['connection_id']] = $connection;
         }
@@ -58,7 +58,7 @@ readonly class RedisConnectionStorage implements ConnectionStorageInterface
     public function update(int $id): ConnectionStorageInterface
     {
         if (1 === $this->client->exists($this->buildKey($id))) {
-            $connection = json_decode($this->client->get($this->buildKey($id)));
+            $connection = json_decode($this->client->get($this->buildKey($id)), true);
 
             $connection['updated_at'] = time();
 

@@ -9,4 +9,6 @@ interface MessageQueueStorageInterface
     public function allByConnectionID(int $connectionID): array;
 
     public function save(int $connectionID, string $event, array $data): self;
+
+    public function remove(string $id): self;
 }

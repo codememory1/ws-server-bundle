@@ -15,6 +15,7 @@ use Codememory\WebSocketServerBundle\EventListener\ConnectionOpen\SaveConnection
 use Codememory\WebSocketServerBundle\EventListener\Message\HandleEventMessageEventListener;
 use Codememory\WebSocketServerBundle\EventListener\Message\UpdateConnectionEventListener;
 use Codememory\WebSocketServerBundle\EventListener\MessageHandlerException\SaveExceptionToLogEventListener;
+use Codememory\WebSocketServerBundle\EventListener\StartServer\RemovingInactiveConnectionsEventListener;
 use Codememory\WebSocketServerBundle\EventListener\StartServer\SendMessageFromQueueEventListener;
 use Codememory\WebSocketServerBundle\Extractors\FromArrayMessageEventExtractor;
 use Codememory\WebSocketServerBundle\Extractors\FromArrayMessageHeadersExtractor;
@@ -95,7 +96,6 @@ final class WebSocketServerExtension extends Extension
             ->addMethodCall('setProtocol', [$config['server']['protocol']])
             ->addMethodCall('setHost', [$config['server']['host']])
             ->addMethodCall('setPort', [$config['server']['port']])
-            ->addMethodCall('setAutoDisconnect', [$config['server']['auto_disconnect']])
             ->addMethodCall('setConfig', [$config['config']]);
 
         $container->setAlias(ConnectionStorageInterface::class, $config['storages']['connection']);
@@ -124,6 +124,17 @@ final class WebSocketServerExtension extends Extension
             ->register(SendMessageFromQueueEventListener::class, SendMessageFromQueueEventListener::class)
             ->setArguments([
                 '$messageQueueStorage' => new Reference(MessageQueueStorageInterface::class),
+                '$logger' => new Reference(LoggerInterface::class)
+            ])
+            ->addTag('kernel.event_listener', [
+                'event' => StartServerEvent::NAME,
+                'method' => 'onStart'
+            ]);
+
+        $container
+            ->register(RemovingInactiveConnectionsEventListener::class, RemovingInactiveConnectionsEventListener::class)
+            ->setArguments([
+                '$connectionStorage' => new Reference(ConnectionStorageInterface::class),
                 '$logger' => new Reference(LoggerInterface::class)
             ])
             ->addTag('kernel.event_listener', [

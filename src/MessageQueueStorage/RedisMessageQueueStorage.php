@@ -37,7 +37,10 @@ final readonly class RedisMessageQueueStorage implements MessageQueueStorageInte
 
     public function save(int $connectionID, string $event, array $data): MessageQueueStorageInterface
     {
-        $this->client->set($this->buildKey(Uuid::uuid4()->toString(), $connectionID), json_encode([
+        $id = Uuid::uuid4()->toString();
+
+        $this->client->set($this->buildKey($id), json_encode([
+            'id' => $id,
             'connection_id' => $connectionID,
             'event' => $event,
             'data' => $data
@@ -46,8 +49,17 @@ final readonly class RedisMessageQueueStorage implements MessageQueueStorageInte
         return $this;
     }
 
-    private function buildKey(string $id, int|string $connectionID): string
+    public function remove(string $id): MessageQueueStorageInterface
     {
-        return "websocket:message:#{$id}:connection:{$connectionID}";
+        if (1 === $this->client->exists($this->buildKey($id))) {
+            $this->client->del($this->buildKey($id));
+        }
+
+        return $this;
+    }
+
+    private function buildKey(string $id): string
+    {
+        return "websocket:message:#{$id}";
     }
 }

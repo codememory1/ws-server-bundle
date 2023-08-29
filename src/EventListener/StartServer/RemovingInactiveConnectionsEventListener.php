@@ -3,14 +3,14 @@
 namespace Codememory\WebSocketServerBundle\EventListener\StartServer;
 
 use Codememory\WebSocketServerBundle\Event\StartServerEvent;
-use Codememory\WebSocketServerBundle\Interfaces\MessageQueueStorageInterface;
+use Codememory\WebSocketServerBundle\Interfaces\ConnectionStorageInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
-final readonly class SendMessageFromQueueEventListener
+final readonly class RemovingInactiveConnectionsEventListener
 {
     public function __construct(
-        private MessageQueueStorageInterface $messageQueueStorage,
+        private ConnectionStorageInterface $connectionStorage,
         private LoggerInterface $logger
     ) {
     }
@@ -19,16 +19,16 @@ final readonly class SendMessageFromQueueEventListener
     {
         try {
             $event->server->addProcess(function() use ($event): void {
-                foreach ($this->messageQueueStorage->all() as $message) {
-                    $event->server->sendMessage($message['connection_id'], $message['event'], $message['data']);
-
-                    $this->messageQueueStorage->remove($message['id']);
+                foreach ($this->connectionStorage->all() as $connection) {
+                    if (!$event->server->existConnection($connection['connection_id'])) {
+                        $this->connectionStorage->remove($connection['connection_id']);
+                    }
                 }
             });
         } catch (Throwable $e) {
             $this->logger->critical($e, [
                 'origin' => self::class,
-                'detail' => 'An error occurred while adding the process of sending messages from the queue'
+                'detail' => 'An error occurred while deleting inactive connections'
             ]);
         }
     }
