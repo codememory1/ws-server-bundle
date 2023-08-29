@@ -5,13 +5,15 @@ namespace Codememory\WebSocketServerBundle\Interfaces;
 interface ConnectionStorageInterface
 {
     /**
-     * @return array<int, ConnectionRequestInterface>
+     * @return array<int, int>
      */
-    public function allConnections(): array;
+    public function all(): array;
 
-    public function getConnection(string|int $id): ?ConnectionRequestInterface;
+    public function exist(int $id): bool;
 
-    public function deleteConnection(string|int $id): void;
+    public function remove(int $id): self;
 
-    public function save(ConnectionRequestInterface $connectionRequest): void;
+    public function insert(int $id): self;
+
+    public function update(int $id): self;
 }

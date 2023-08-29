@@ -4,5 +4,5 @@ namespace Codememory\WebSocketServerBundle\Interfaces;
 
 interface MessageEventHandlerInterface
 {
-    public function handle(ServerInterface $server, FrameInterface $frame): void;
+    public function handle(ServerInterface $server, MessageInterface $message): void;
 }

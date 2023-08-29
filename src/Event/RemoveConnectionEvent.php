@@ -2,16 +2,15 @@
 
 namespace Codememory\WebSocketServerBundle\Event;
 
-use Codememory\WebSocketServerBundle\Interfaces\MessageInterface;
 use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
 
-final readonly class MessageEvent
+final readonly class RemoveConnectionEvent
 {
-    public const NAME = 'codememory.ws_server.message';
+    public const NAME = 'codememory.ws_server.remove_connection';
 
     public function __construct(
         public ServerInterface $server,
-        public MessageInterface $message
+        public int $connectionID
     ) {
     }
 }

@@ -2,16 +2,15 @@
 
 namespace Codememory\WebSocketServerBundle\Event;
 
-use Codememory\WebSocketServerBundle\Interfaces\MessageInterface;
 use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
 
-final readonly class MessageEvent
+final readonly class ConnectionOpenEvent
 {
-    public const NAME = 'codememory.ws_server.message';
+    public const NAME = 'codememory.ws_server.connection_open';
 
     public function __construct(
         public ServerInterface $server,
-        public MessageInterface $message
+        public int $connectionID
     ) {
     }
 }
