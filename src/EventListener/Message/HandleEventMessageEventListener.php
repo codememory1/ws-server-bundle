@@ -4,31 +4,35 @@ namespace Codememory\WebSocketServerBundle\EventListener\Message;
 
 use Codememory\WebSocketServerBundle\Event\MessageEvent;
 use Codememory\WebSocketServerBundle\Event\MessageHandlerExceptionEvent;
+use Codememory\WebSocketServerBundle\Interfaces\MessageEventExtractorInterface;
 use Codememory\WebSocketServerBundle\Interfaces\MessageEventHandlerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Throwable;
 
-final class ExecuteMessageEventTypeEventListener
+final readonly class HandleEventMessageEventListener
 {
     /**
-     * @param array<int, MessageEventHandlerInterface> $handlers
+     * @param array<string, MessageEventHandlerInterface> $eventListeners
      */
     public function __construct(
-        private readonly array $handlers,
-        private readonly EventDispatcherInterface $eventDispatcher
+        private array $eventListeners,
+        private EventDispatcherInterface $eventDispatcher,
+        private MessageEventExtractorInterface $messageEventExtractor
     ) {
     }
 
     public function onMessage(MessageEvent $event): void
     {
         try {
-            if (array_key_exists($event->frame->getEventType(), $this->handlers)) {
-                $this->handlers[$event->frame->getEventType()]->handle($event->server, $event->frame);
+            $eventName = $this->messageEventExtractor->extractEventName($event->message);
+
+            if (array_key_exists($eventName, $this->eventListeners)) {
+                $this->eventListeners[$eventName]->handle($event->server, $event->message);
             }
         } catch (Throwable $e) {
             $this->eventDispatcher->dispatch(new MessageHandlerExceptionEvent(
                 $event->server,
-                $event->frame->getConnectionRequest(),
+                $event->message->getSenderConnectionID(),
                 $e
             ), MessageHandlerExceptionEvent::NAME);
         }

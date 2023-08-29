@@ -4,12 +4,12 @@ namespace Codememory\WebSocketServerBundle\Event;
 
 use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
 
-final class StartEvent
+final readonly class StartServerEvent
 {
-    public const NAME = 'codememory.ws_server.start';
+    public const NAME = 'codememory.ws_server.start_server';
 
     public function __construct(
-        public readonly ServerInterface $server
+        public ServerInterface $server
     ) {
     }
 }
