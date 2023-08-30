@@ -4,5 +4,11 @@ namespace Codememory\WebSocketServerBundle\Interfaces;
 
 interface MessageQueueInterface
 {
-    public function addMessageToQueue(int $connectionID, string $event, array $data): self;
+    public function getID(): string;
+
+    public function getConnectionID(): int;
+
+    public function getEvent(): string;
+
+    public function getData(): array;
 }

@@ -3,6 +3,9 @@
 namespace Codememory\WebSocketServerBundle\ConnectionStorage;
 
 use Codememory\WebSocketServerBundle\Interfaces\ConnectionStorageInterface;
+use Codememory\WebSocketServerBundle\ValueObject\Connection;
+use DateTimeImmutable;
+use Exception;
 use Predis\Client;
 
 readonly class RedisConnectionStorage implements ConnectionStorageInterface
@@ -14,7 +17,7 @@ readonly class RedisConnectionStorage implements ConnectionStorageInterface
 
     protected function buildKey(int|string $id): string
     {
-        return "websocket:connection:{$id}";
+        return "websocket:connection:#{$id}";
     }
 
     public function all(): array
@@ -22,9 +25,17 @@ readonly class RedisConnectionStorage implements ConnectionStorageInterface
         $connections = [];
 
         foreach ($this->client->keys($this->buildKey('*')) as $key) {
-            $connection = json_decode($this->client->get($key), true);
+            $connectionData = json_decode($this->client->get($key), true);
 
-            $connections[$connection['connection_id']] = $connection;
+            try {
+                $createdAt = new DateTimeImmutable($connectionData['created_at']);
+            } catch (Exception) {
+                $createdAt = new DateTimeImmutable();
+            }
+
+            $connection = new Connection($connectionData['connection_id'], $createdAt);
+
+            $connections[$connection->getConnectionID()] = $connection;
         }
 
         return $connections;
@@ -48,8 +59,7 @@ readonly class RedisConnectionStorage implements ConnectionStorageInterface
     {
         $this->client->set($this->buildKey($id), json_encode([
             'connection_id' => $id,
-            'created_at' => time(),
-            'updated_at' => time()
+            'created_at' => time()
         ]));
 
         return $this;
@@ -57,14 +67,6 @@ readonly class RedisConnectionStorage implements ConnectionStorageInterface
 
     public function update(int $id): ConnectionStorageInterface
     {
-        if (1 === $this->client->exists($this->buildKey($id))) {
-            $connection = json_decode($this->client->get($this->buildKey($id)), true);
-
-            $connection['updated_at'] = time();
-
-            $this->client->set($this->buildKey($id), json_encode($connection));
-        }
-
         return $this;
     }
 }

@@ -4,11 +4,11 @@ namespace Codememory\WebSocketServerBundle\MessageQueue;
 
 use Codememory\WebSocketServerBundle\Event\AddedMessageToQueueEvent;
 use Codememory\WebSocketServerBundle\Interfaces\ConnectionStorageInterface;
-use Codememory\WebSocketServerBundle\Interfaces\MessageQueueInterface;
+use Codememory\WebSocketServerBundle\Interfaces\MessageQueueManagerInterface;
 use Codememory\WebSocketServerBundle\Interfaces\MessageQueueStorageInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
-final readonly class MessageQueue implements MessageQueueInterface
+final readonly class MessageQueueManagerManager implements MessageQueueManagerInterface
 {
     public function __construct(
         private MessageQueueStorageInterface $messageQueueStorage,
@@ -17,7 +17,7 @@ final readonly class MessageQueue implements MessageQueueInterface
     ) {
     }
 
-    public function addMessageToQueue(int $connectionID, string $event, array $data): MessageQueueInterface
+    public function addMessageToQueue(int $connectionID, string $event, array $data): MessageQueueManagerInterface
     {
         if ($this->connectionStorage->exist($connectionID)) {
             $this->messageQueueStorage->save($connectionID, $event, $data);
