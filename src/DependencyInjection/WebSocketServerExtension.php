@@ -24,9 +24,11 @@ use Codememory\WebSocketServerBundle\Interfaces\MessageConverterInterface;
 use Codememory\WebSocketServerBundle\Interfaces\MessageEventExtractorInterface;
 use Codememory\WebSocketServerBundle\Interfaces\MessageHeadersExtractorInterface;
 use Codememory\WebSocketServerBundle\Interfaces\MessageInputDataExtractorInterface;
+use Codememory\WebSocketServerBundle\Interfaces\MessageQueueManagerInterface;
 use Codememory\WebSocketServerBundle\Interfaces\MessageQueueStorageInterface;
 use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
 use Codememory\WebSocketServerBundle\Interfaces\URLBuilderInterface;
+use Codememory\WebSocketServerBundle\MessageQueue\MessageQueueManager;
 use Codememory\WebSocketServerBundle\MessageQueueStorage\RedisMessageQueueStorage;
 use Codememory\WebSocketServerBundle\Server\Swoole\Server;
 use Codememory\WebSocketServerBundle\Service\URLBuilder;
@@ -54,6 +56,7 @@ final class WebSocketServerExtension extends Extension
         $this->registerServices($config, $container);
         $this->registerWebSocketServerCommand($container);
         $this->registerEventListeners($webSocketEventListeners, $container);
+        $this->registerMessageQueueManager($container);
     }
 
     private function buildWebSocketEventListeners(array $config): array
@@ -182,6 +185,17 @@ final class WebSocketServerExtension extends Extension
             ->addTag('kernel.event_listener', [
                 'event' => MessageHandlerExceptionEvent::NAME,
                 'method' => 'onMessageException'
+            ]);
+    }
+
+    private function registerMessageQueueManager(ContainerBuilder $containerBuilder): void
+    {
+        $containerBuilder
+            ->register(MessageQueueManagerInterface::class, MessageQueueManager::class)
+            ->setArguments([
+                '$messageQueueStorage' => new Reference(MessageQueueStorageInterface::class),
+                '$connectionStorage' => new Reference(ConnectionStorageInterface::class),
+                '$eventDispatcher' => new Reference(EventDispatcherInterface::class)
             ]);
     }
 }

@@ -8,7 +8,7 @@ use Codememory\WebSocketServerBundle\Interfaces\MessageQueueManagerInterface;
 use Codememory\WebSocketServerBundle\Interfaces\MessageQueueStorageInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
-final readonly class MessageQueueManagerManager implements MessageQueueManagerInterface
+final readonly class MessageQueueManager implements MessageQueueManagerInterface
 {
     public function __construct(
         private MessageQueueStorageInterface $messageQueueStorage,
