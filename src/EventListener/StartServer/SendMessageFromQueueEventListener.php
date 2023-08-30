@@ -20,9 +20,9 @@ final readonly class SendMessageFromQueueEventListener
         try {
             $event->server->addProcess(function() use ($event): void {
                 foreach ($this->messageQueueStorage->all() as $message) {
-                    $event->server->sendMessage($message['connection_id'], $message['event'], $message['data']);
+                    $event->server->sendMessage($message->getConnectionID(), $message->getEvent(), $message->getData());
 
-                    $this->messageQueueStorage->remove($message['id']);
+                    $this->messageQueueStorage->remove($message);
                 }
             });
         } catch (Throwable $e) {

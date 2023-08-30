@@ -13,7 +13,6 @@ use Codememory\WebSocketServerBundle\Event\StartServerEvent;
 use Codememory\WebSocketServerBundle\EventListener\ConnectionClosed\RemoveConnectionEventListener;
 use Codememory\WebSocketServerBundle\EventListener\ConnectionOpen\SaveConnectionEventListener;
 use Codememory\WebSocketServerBundle\EventListener\Message\HandleEventMessageEventListener;
-use Codememory\WebSocketServerBundle\EventListener\Message\UpdateConnectionEventListener;
 use Codememory\WebSocketServerBundle\EventListener\MessageHandlerException\SaveExceptionToLogEventListener;
 use Codememory\WebSocketServerBundle\EventListener\StartServer\RemovingInactiveConnectionsEventListener;
 use Codememory\WebSocketServerBundle\EventListener\StartServer\SendMessageFromQueueEventListener;
@@ -169,16 +168,6 @@ final class WebSocketServerExtension extends Extension
                 '$eventListeners' => $eventListeners,
                 '$eventDispatcher' => new Reference(EventDispatcherInterface::class),
                 '$messageEventExtractor' => new Reference(MessageEventExtractorInterface::class)
-            ])
-            ->addTag('kernel.event_listener', [
-                'event' => MessageEvent::NAME,
-                'method' => 'onMessage'
-            ]);
-
-        $container
-            ->register(UpdateConnectionEventListener::class, UpdateConnectionEventListener::class)
-            ->setArguments([
-                '$connectionStorage' => new Reference(ConnectionStorageInterface::class)
             ])
             ->addTag('kernel.event_listener', [
                 'event' => MessageEvent::NAME,

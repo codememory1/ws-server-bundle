@@ -20,8 +20,8 @@ final readonly class RemovingInactiveConnectionsEventListener
         try {
             $event->server->addProcess(function() use ($event): void {
                 foreach ($this->connectionStorage->all() as $connection) {
-                    if (!$event->server->existConnection($connection['connection_id'])) {
-                        $this->connectionStorage->remove($connection['connection_id']);
+                    if (!$event->server->existConnection($connection->getConnectionID())) {
+                        $this->connectionStorage->remove($connection->getConnectionID());
                     }
                 }
             });
