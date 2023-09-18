@@ -4,14 +4,14 @@ namespace Codememory\WebSocketServerBundle\Event;
 
 use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
 
-final readonly class ConnectionOpenEvent
+final class ConnectionOpenEvent
 {
     public const NAME = 'codememory.ws_server.connection_open';
 
     public function __construct(
-        public ServerInterface $server,
-        public int|string $connectionID,
-        public string $secWebsocketKey
+        public readonly ServerInterface $server,
+        public readonly int|string $connectionID,
+        public readonly string $secWebsocketKey
     ) {
     }
 }

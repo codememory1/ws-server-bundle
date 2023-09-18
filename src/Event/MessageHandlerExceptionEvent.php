@@ -5,14 +5,14 @@ namespace Codememory\WebSocketServerBundle\Event;
 use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
 use Throwable;
 
-final readonly class MessageHandlerExceptionEvent
+final class MessageHandlerExceptionEvent
 {
     public const NAME = 'codememory.ws_server.message_handler_exception';
 
     public function __construct(
-        public ServerInterface $server,
-        public int $connectionID,
-        public Throwable $throwable
+        public readonly ServerInterface $server,
+        public readonly int $connectionID,
+        public readonly Throwable $throwable
     ) {
     }
 }

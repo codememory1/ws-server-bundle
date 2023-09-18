@@ -8,14 +8,14 @@ use Codememory\WebSocketServerBundle\Interfaces\MessageEventListenerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Throwable;
 
-final readonly class HandleEventMessageEventListener
+final class HandleEventMessageEventListener
 {
     /**
      * @param array<string, MessageEventListenerInterface> $eventListeners
      */
     public function __construct(
-        private array $eventListeners,
-        private EventDispatcherInterface $eventDispatcher
+        private readonly array $eventListeners,
+        private readonly EventDispatcherInterface $eventDispatcher
     ) {
     }
 
