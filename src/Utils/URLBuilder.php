@@ -1,6 +1,6 @@
 <?php
 
-namespace Codememory\WebSocketServerBundle\Service;
+namespace Codememory\WebSocketServerBundle\Utils;
 
 use Codememory\WebSocketServerBundle\Interfaces\URLBuilderInterface;
 

@@ -2,8 +2,6 @@
 
 namespace Codememory\WebSocketServerBundle\Server;
 
-use Codememory\WebSocketServerBundle\Interfaces\ConnectionStorageInterface;
-use Codememory\WebSocketServerBundle\Interfaces\MessageConverterInterface;
 use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
 use Codememory\WebSocketServerBundle\Interfaces\URLBuilderInterface;
 use RuntimeException;
@@ -19,8 +17,6 @@ abstract class AbstractServer implements ServerInterface
 
     public function __construct(
         protected readonly URLBuilderInterface $URLBuilder,
-        protected readonly MessageConverterInterface $messageConverter,
-        protected readonly ConnectionStorageInterface $connectionStorage,
         protected readonly EventDispatcherInterface $eventDispatcher
     ) {
     }

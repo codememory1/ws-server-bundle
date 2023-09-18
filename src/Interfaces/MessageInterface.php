@@ -8,7 +8,11 @@ interface MessageInterface
 {
     public function getSenderConnectionID(): int;
 
-    public function getValue(): mixed;
+    public function getEvent(): ?string;
+
+    public function getData(): array;
+
+    public function getFullMessage(): array;
 
     public function getOpcode(): ?Opcode;
 

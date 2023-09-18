@@ -27,21 +27,6 @@ return [
   - __port__: Server port. Default: "*8079*"
 
 
-- __converters__:
-  - - __message__: Service for converting a message from a client. Default: "from json to array", Default Service: "*WebSocketServerBundle::DEFAULT_MESSAGE_CONVERTER_SERVICE*"
-
-
-- __extractors__: Please note, if you are creating a custom message converter, then you need to override all extractors
-  - __message_event__: Extractor to get the name of the event from the message. Default Service: "*WebSocketServerBundle::DEFAULT_MESSAGE_EVENT_EXTRACTOR_SERVICE*"
-  - __message_headers__: Extractor getting header from message. Default Service: "*WebSocketServerBundle::DEFAULT_MESSAGE_HEADERS_EXTRACTOR_SERVICE*"
-  - __message_input_data__: Extractor receiving input data. Default Service: "*WebSocketServerBundle::DEFAULT_MESSAGE_INPUT_DATA_EXTRACTOR_SERVICE*"
-
-
-- __storages__: 
-  - __connection__: Storage service, for storing connections. Default "*Redis*", Default service: "*WebSocketServerBundle::DEFAULT_CONNECTION_STORAGE_SERVICE*"
-  - __message_queue__: Storage service, for storing queue messages. Default "*Redis*", Default service: "*WebSocketServerBundle::DEFAULT_MESSAGE_QUEUE_STORAGE_SERVICE*"
-
-
 - __event_listeners__: Set of message listeners
   - { event: "TEST", listener: "App\WebSocketEventListeners\TestHandler" }: Example event listener
 
@@ -54,8 +39,7 @@ return [
 ```json
 {
   "event": "MESSAGE_EVENT_NAME",
-  "headers": {},
-  "input_data": {}
+  "data": {}
 }
 ```
 
@@ -64,11 +48,11 @@ return [
 ```php
 namespace App\WebSocket\EventListeners;
 
-use Codememory\WebSocketServerBundle\Interfaces\MessageEventHandlerInterface;
+use Codememory\WebSocketServerBundle\Interfaces\MessageEventListenerInterface;
 use Codememory\WebSocketServerBundle\Interfaces\MessageInterface;
 use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
 
-final class TestHandler implements MessageEventHandlerInterface 
+final class TestHandler implements MessageEventListenerInterface 
 {
     public function handle(ServerInterface $server, MessageInterface $message) : void
     {
@@ -92,11 +76,8 @@ codememory_ws_server:
 ```
 
 ### Events
-- __codememory.ws_server.added_message_to_queue__: The message to send to the connection has been added to the queue
-
-
 - __codememory.ws_server.connection_open__: Connection open
-  - class: Codememory\WebSocketServerBundle\Event\AddedMessageToQueueEvent
+  - class: Codememory\WebSocketServerBundle\Event\ConnectionOpenEvent
 
 
 - __codememory.ws_server.connection_closed__: Connection closed
@@ -114,11 +95,6 @@ codememory_ws_server:
 - __codememory.ws_server.message_sent__: A message has been sent to the connection
   - class: Codememory\WebSocketServerBundle\Event\MessageSentEvent
 
-
-- __codememory.ws_server.remove_connection__: Removing a connection from the connection store
-  - class: Codememory\WebSocketServerBundle\Event\RemoveConnectionEvent
-
-
 - __codememory.ws_server.start_server__: The server starts up. Usually, in this event, the necessary child processes are added
   - class: Codememory\WebSocketServerBundle\Event\StartServerEvent
 
@@ -127,186 +103,188 @@ codememory_ws_server:
   - class: Codememory\WebSocketServerBundle\Event\StartWorkerEvent
 
 
-### Custom message converter
-> Note! If you create your own message converter, you need to override all message extractors
+### Let's implement the task of sending messages to specific users by their ID in the database
 
-> If your converter returns an array of default extractor keys, you don't need to redefine extractors
-
-_So! Let's create a message converter where we expect the message to be json. This is an example of a default converter_
+#### First, let's create a Listener for the Open Connection event and save all connections in redis
 ```php
-namespace App\WebSocket\Converters\Message;
+<?php
 
-use Codememory\WebSocketServerBundle\Interfaces\MessageConverterInterface;
+use Codememory\WebSocketServerBundle\Event\ConnectionOpenEvent;
+use Predis\Client;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
-final class FromSerializeToArrayMessageConverter implements MessageConverterInterface {
-    public function convert(mixed $message) : array
-    {
-        if (is_array($message)) {
-            return $message;
-        }
-        
-        if (is_string($message)) {
-            $message = json_decode($message, true);
-
-            if (empty($message) || JSON_ERROR_NONE !== json_last_error() || !is_array($message)) {
-                return [];
-            }
-
-            return $message;
-        }
-
-        return [];
-    }
-}
-```
-
-### Using your own converter
-
-```yaml
-# config/packages/codememory_ws_server.yaml
-codememory_ws_server:
-  converters:
-    message: App\WebSocket\Converters\Message\FromSerializeToArrayMessageConverter
-```
-
-### Extractors
-> The principle of implementing your own extractor is the same
-
-### Extractor interfaces
-- _Codememory\WebSocketServerBundle\Interfaces\MessageEventExtractorInterface_
-
-
-- _Codememory\WebSocketServerBundle\Interfaces\MessageHeadersExtractorInterface_
-
-
-- _Codememory\WebSocketServerBundle\Interfaces\MessageInputDataExtractorInterface_
-
-
-### Let's now see how to implement our connection store
-
-> Please note that this code is just an example and in real projects use a more universal approach that will ideally suit you in terms of speed.
-
-```php
-namespace App\WebSocket\Storages\Connection;
-
-use Codememory\WebSocketServerBundle\Interfaces\ConnectionStorageInterface;
-use Codememory\WebSocketServerBundle\ValueObject\Connection as ConnectionVO;
-use Doctrine\ORM\EntityManagerInterface;
-
-// Our repository will run Doctrine ORM
-
-#[ORM\Entity(repositoryClass: WebSocketConnectionRepository::class)]
-#[ORM\HasLifecycleCallbacks]
-class WebSocketConnection
-{
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: Types::INTEGER)]
-    private ?int $id = null;
-    
-    #[ORM\Column(unique: true)]
-    private ?int $connectionId = null;
-    
-    #[ORM\Column]
-    private ?DateTimeImmutable $createdAt = null;
-    
-    #[ORM\PrePersist]
-    public function setCreatedAt(): self
-    {
-        $this->createdAt = new DateTimeImmutable();
-
-        return $this;
-    }
-    
-    // ... Other Getters and Setters
-}
-
-final class DatabaseConnectionStorage implements ConnectionStorageInterface 
+#[AsEventListener(ConnectionOpenEvent::NAME, 'onOpen')]
+readonly class SaveConnectionToRedisEventListener
 {
     public function __construct(
-        private readonly EntityManagerInterface $em,
-        private readonly WebSocketConnectionRepository $webSocketConnectionRepository
-    ) {}
-    
-    public function all() : array
-    {
-        // We need to bring the entity to a specific interface. Will use default ValueObject
-        return array_map(static function (WebSocketConnection $connection) {
-            return new ConnectionVO($connection->getConnectionId(), $connection->getCreatedAt());
-        }, $this->webSocketConnectionRepository->findAll());
+        private Client $client
+    ) {
     }
-    
-    public function exist(int $id) : bool
+
+    public function onOpen(ConnectionOpenEvent $event): void
     {
-        return null !== $this->webSocketConnectionRepository->findOneBy(['connectionId' => $id]);
-    }
-    
-    public function remove(int $id) : ConnectionStorageInterface
-    {
-        $connection = $this->webSocketConnectionRepository->findOneBy(['connectionId' => $id]);
-        
-        if (null !== $connection) {
-            $this->em->remove($connection);
-            $this->em->flush($connection);
-        }
-        
-        return $this;
-    }
-    
-    // In this case, we have nothing to update in the connection, so we will skip this method
-    public function update(int $id) : ConnectionStorageInterface
-    {
-        return $this;
-    }
-    
-    public function insert(int $id) : ConnectionStorageInterface
-    {
-        $connection = new WebSocketConnection();
-        
-        $connection->setConnectionId($id);
-        
-        $this->em->persist($connection);
-        $this->em->flush($connection);
-        
-        return $connection
+        // We save the new connection in the hash table
+        $this->client->hset('websocket:connections', $event->connectionID, json_encode([
+            'connection_id' => $event->connectionID,
+            'websocket_sec_key' => $event->secWebsocketKey
+        ]));
     }
 }
 ```
 
-### Let's now apply our connection storage
+#### Now let's create an EventListener on the CONNECT message
 
-```yaml
-# config/packages/codememory_ws_server.yaml
-codememory_ws_server:
-  storages:
-    connection: App\WebSocket\Storages\Connection\DatabaseConnectionStorage
-```
-
-### Custom queue message storage
-> The principle of implementing the queue message store is the same as the connection store. You only need to implement the interface _Codememory\WebSocketServerBundle\Interfaces\MessageQueueStorageInterface_
-
-
-### Let's now see how to use queue messages
+> Please note that in the current primer we will not use JWT, but will immediately pick up the user ID. In your example, instead of passing user_id, you can pass a JWT token, check its validity and get user_id from it
 
 ```php
+<?php
 
-use Codememory\WebSocketServerBundle\Interfaces\MessageQueueManagerInterface;
-use Codememory\WebSocketServerBundle\Interfaces\ConnectionStorageInterface;
+use Codememory\WebSocketServerBundle\Interfaces\MessageEventListenerInterface;
+use Codememory\WebSocketServerBundle\Interfaces\MessageInterface;
+use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
+use Predis\Client;
 
-// Let's imagine that we have a certain api route that creates an order, and after creating an order, we need to notify all users
-final class TestController extends AbstractController
+readonly class ConnectEventListener implements MessageEventListenerInterface
 {
-    #[Route('/order/create', methods: 'POST')]
-    public function createOrder(MessageQueueManagerInterface $messageQueueManager, ConnectionStorageInterface $connectionStorage): Response
+    public function __construct(
+        private Client $client
+    ) {
+    }
+
+    public function handle(ServerInterface $server, MessageInterface $message): void
     {
-        // Order is created
-        foreach ($connectionStorage->all() as $connection) {
-            $messageQueueManager->addMessageToQueue($connection->getConnectionID(), 'CREATED_ORDER', [
-                'order_id' => 1
-            ]);
-        }
+        $data = $message->getData();
         
-        // Now after creating an order, each connection will receive a message via WebSocket about a new order
+        if (array_key_exists('user_id', $data) && is_int($data['user_id'])) {
+          // Here we bind the user to the ws connection and save it to a new hash table
+          $this->client->hset($this->buildKey($data['user_id']), $message->getSenderConnectionID(), json_encode([
+              'timestamp' => time()
+          ]));
+        }
+    }
+    
+    private function buildKey(int $userId): string
+    {
+        return "websocket:user:$userId:connections";
+    }
+}
+
+// Don't worry about registering this EventListener in codememory_ws_server.yaml
+```
+
+#### Now let's create a manager that will save messages to a queue that need to be sent to a specific user
+```php
+<?php
+
+use Predis\Client;
+
+final readonly class WebSocketMessageQueueManager
+{
+    public const HASH_TABLE_NAME = 'websocket:queue:messages';
+
+    public function __construct(
+        private Client $client
+    ) {
+    }
+
+    public function sendMessage(int $userId, string $event, array $data): void
+    {
+        // We get all ws connections by user ID
+        $connections = $this->client->hgetall("websocket:user:$userId:connections");
+
+        foreach ($connections as $id => $userConnectionData) {
+            // Receiving information about the connection by connection identifier
+            $connection = $this->client->hget('websocket:connections', $id);
+
+            if (null !== $connection) {
+                $connectionData = json_decode($connection, true);
+
+                // We save the message in a hash table, as the key we indicate the connection ID to which we need to send and its websocket-sec-key (to ensure security)
+                $this->client->hset(
+                    self::HASH_TABLE_NAME,
+                    $this->buildMessageField($id, $connectionData['websocket_sec_key']),
+                    json_encode([
+                      'event' => $event,
+                      'data' => $data
+                    ])
+                );
+            }
+        }
+    }
+    
+    private function buildMessageField(int $connectionId, string $webSocketSecKey): string
+    {
+        return "{$connectionId}_{$webSocketSecKey}";
     }
 }
 ```
+
+#### And as a final step, we will add a process that will watch redis and check the existence of messages that need to be sent to the user
+```php
+<?php
+
+use App\Services\WebSocketMessageQueueManager;
+use Codememory\WebSocketServerBundle\Event\StartServerEvent;
+use Predis\Client;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+use Throwable;
+
+#[AsEventListener(StartServerEvent::NAME, 'onStart')]
+final readonly class ProcessForSendingMessagesFromQueueEventListener
+{
+    public function __construct(
+        private Client $client,
+        private LoggerInterface $logger
+    ) {
+    }
+
+    public function onStart(StartServerEvent $event): void
+    {
+        try {
+            $event->server->addProcess(function () use ($event) {
+                // Receive all messages from the queue
+                $messages = $this->client->hgetall(WebSocketMessageQueueManager::HASH_TABLE_NAME);
+                
+                foreach ($messages as $for => $message) {
+                    [$connectionID, $webSocketSecKey] = explode('_', $for);
+                    
+                    // We check that the message that was added to the queue belongs to the same connection that is connected
+                    if ($this->connectionCheck($connectionID, $webSocketSecKey)) {
+                        $message = json_decode($message, true);
+
+                        $event->server->sendMessage($connectionID, $message['event'], $message['data']);
+                        
+                        // We remove the message from the queue so that it is not sent again
+                        $this->client->hdel(WebSocketMessageQueueManager::HASH_TABLE_NAME, [$for]);
+                    }
+                }
+            });
+        } catch (Throwable $e) {
+            $this->logger->critical($e, [
+                'origin' => self::class,
+                'detail' => 'An error occurred while adding a process to send messages from a queue.'
+            ]);
+        }
+    }
+
+    private function connectionCheck(int $connectionID, string $webSocketSecKey): bool
+    {
+        $connection = $this->client->hget('websocket:connections', $connectionID);
+
+        if (null !== $connection) {
+            $connectionData = json_decode($connection, true);
+
+            if ($connectionData['websocket_sec_key'] === $webSocketSecKey) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+```
+
+#### That's all, this example is not ideal and requires changes and depends on your needs
+
+> Now if we want to send a message to a user with ID 500, we just need to use our manager anywhere in the code and the sendMessage method

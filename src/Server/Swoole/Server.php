@@ -7,9 +7,9 @@ use Codememory\WebSocketServerBundle\Enum\Opcode;
 use Codememory\WebSocketServerBundle\Enum\StatsMode;
 use Codememory\WebSocketServerBundle\Event\ConnectionClosedEvent;
 use Codememory\WebSocketServerBundle\Event\ConnectionOpenEvent;
+use Codememory\WebSocketServerBundle\Event\ConnectionRemovedEvent;
 use Codememory\WebSocketServerBundle\Event\MessageEvent;
 use Codememory\WebSocketServerBundle\Event\MessageSentEvent;
-use Codememory\WebSocketServerBundle\Event\RemoveConnectionEvent;
 use Codememory\WebSocketServerBundle\Event\StartServerEvent;
 use Codememory\WebSocketServerBundle\Interfaces\ServerInterface;
 use Codememory\WebSocketServerBundle\Server\AbstractServer;
@@ -20,7 +20,7 @@ use OpenSwoole\WebSocket\Server as SwooleServer;
 
 class Server extends AbstractServer
 {
-    private ?SwooleServer $server = null;
+    protected ?SwooleServer $server = null;
 
     public function disconnect(int $connectionID, CloseCode $code = CloseCode::NORMAL, ?string $reason = null): bool
     {
@@ -53,12 +53,18 @@ class Server extends AbstractServer
                 'data' => $data
             ]), $opcodeNumber, $flags);
         } else {
-            $this->connectionStorage->remove($connectionID);
-
-            $this->eventDispatcher->dispatch(new RemoveConnectionEvent($this, $connectionID), RemoveConnectionEvent::NAME);
+            $this->eventDispatcher->dispatch(new ConnectionRemovedEvent($this, $connectionID), ConnectionRemovedEvent::NAME);
         }
 
-        $this->eventDispatcher->dispatch(new MessageSentEvent($this, $connectionID, $event, $data, $isSuccess, $opcode, $flags), MessageSentEvent::NAME);
+        $this->eventDispatcher->dispatch(new MessageSentEvent(
+            $this,
+            $connectionID,
+            $event,
+            $data,
+            $isSuccess,
+            $opcode,
+            $flags
+        ), MessageSentEvent::NAME);
 
         return $isSuccess;
     }
@@ -126,7 +132,10 @@ class Server extends AbstractServer
 
     private function init(): void
     {
-        $this->server = new SwooleServer($this->URLBuilder->build($this->getProtocol(), $this->getHost()), $this->getPort());
+        $this->server = new SwooleServer(
+            $this->URLBuilder->build($this->getProtocol(), $this->getHost()),
+            $this->getPort()
+        );
 
         if ([] !== $this->getConfig()) {
             $this->server->set($this->getConfig());
@@ -140,24 +149,25 @@ class Server extends AbstractServer
     private function onOpen(): void
     {
         $this->server->on('Open', function(SwooleServer $server, SwooleRequest $request): void {
-            $this->eventDispatcher->dispatch(new ConnectionOpenEvent($this, $request->fd), ConnectionOpenEvent::NAME);
+            $this->eventDispatcher->dispatch(new ConnectionOpenEvent(
+                $this,
+                $request->fd,
+                $request->header['sec-websocket-key']
+            ), ConnectionOpenEvent::NAME);
         });
     }
 
     private function onMessage(): void
     {
         $this->server->on('Message', function(SwooleServer $server, Frame $frame): void {
-            $this->eventDispatcher->dispatch(
-                new MessageEvent($this, new Message($this->messageConverter, $frame)),
-                MessageEvent::NAME
-            );
+            $this->eventDispatcher->dispatch(new MessageEvent($this, new Message($frame)), MessageEvent::NAME);
         });
     }
 
     private function onClose(): void
     {
-        $this->server->on('Close', function(SwooleServer $server, int $connectionID): void {
-            $this->eventDispatcher->dispatch(new ConnectionClosedEvent($this, $connectionID), ConnectionClosedEvent::NAME);
+        $this->server->on('Close', function(SwooleServer $server, int $fd): void {
+            $this->eventDispatcher->dispatch(new ConnectionClosedEvent($this, $fd), ConnectionClosedEvent::NAME);
         });
     }
 }

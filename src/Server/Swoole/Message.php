@@ -3,15 +3,18 @@
 namespace Codememory\WebSocketServerBundle\Server\Swoole;
 
 use Codememory\WebSocketServerBundle\Enum\Opcode;
-use Codememory\WebSocketServerBundle\Interfaces\MessageConverterInterface;
 use Codememory\WebSocketServerBundle\Interfaces\MessageInterface;
+use function is_array;
+use function is_string;
+use const JSON_ERROR_NONE;
 use OpenSwoole\WebSocket\Frame;
 
-final readonly class Message implements MessageInterface
+final class Message implements MessageInterface
 {
+    private ?array $fullMessage = null;
+
     public function __construct(
-        protected MessageConverterInterface $messageConverter,
-        protected Frame $frame
+        private readonly Frame $frame
     ) {
     }
 
@@ -20,9 +23,45 @@ final readonly class Message implements MessageInterface
         return $this->frame->fd;
     }
 
-    public function getValue(): mixed
+    public function getEvent(): ?string
     {
-        return $this->messageConverter->convert($this->frame->data);
+        $event = $this->getFullMessage()['event'] ?? null;
+
+        if (!is_string($event)) {
+            return null;
+        }
+
+        return $event;
+    }
+
+    public function getData(): array
+    {
+        $data = $this->getFullMessage()['data'] ?? [];
+
+        if (!is_array($data)) {
+            return [];
+        }
+
+        return $data;
+    }
+
+    public function getFullMessage(): array
+    {
+        if (null === $this->fullMessage) {
+            if (null === $this->frame->data) {
+                return [];
+            }
+
+            $message = json_decode($this->frame->data, true);
+
+            if (empty($message) || JSON_ERROR_NONE !== json_last_error() || !is_array($message)) {
+                return [];
+            }
+
+            return $message;
+        }
+
+        return $this->fullMessage;
     }
 
     public function getOpcode(): ?Opcode

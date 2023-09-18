@@ -16,10 +16,10 @@
         "php": ">=8.2",
         "ext-openswoole": "*",
         "symfony/console": "6.2.*",
-        "predis/predis": "*",
         "symfony/event-dispatcher": "6.2.*",
-        "openswoole/core": "^22.1",
-        "openswoole/ide-helper": "*",
-        "ramsey/uuid": "*"
+        "openswoole/core": "^22.1"
+    },
+    "require-dev": {
+        "openswoole/ide-helper": "*"
     }
 }
