@@ -4,29 +4,27 @@ namespace Codememory\WebSocketServerBundle\EventListener\Message;
 
 use Codememory\WebSocketServerBundle\Event\MessageEvent;
 use Codememory\WebSocketServerBundle\Event\MessageHandlerExceptionEvent;
-use Codememory\WebSocketServerBundle\Interfaces\MessageEventExtractorInterface;
-use Codememory\WebSocketServerBundle\Interfaces\MessageEventHandlerInterface;
+use Codememory\WebSocketServerBundle\Interfaces\MessageEventListenerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Throwable;
 
 final readonly class HandleEventMessageEventListener
 {
     /**
-     * @param array<string, MessageEventHandlerInterface> $eventListeners
+     * @param array<string, MessageEventListenerInterface> $eventListeners
      */
     public function __construct(
         private array $eventListeners,
-        private EventDispatcherInterface $eventDispatcher,
-        private MessageEventExtractorInterface $messageEventExtractor
+        private EventDispatcherInterface $eventDispatcher
     ) {
     }
 
     public function onMessage(MessageEvent $event): void
     {
         try {
-            $eventName = $this->messageEventExtractor->extractEventName($event->message);
+            $eventName = $event->message->getEvent();
 
-            if (array_key_exists($eventName, $this->eventListeners)) {
+            if (null !== $eventName && array_key_exists($eventName, $this->eventListeners)) {
                 $this->eventListeners[$eventName]->handle($event->server, $event->message);
             }
         } catch (Throwable $e) {

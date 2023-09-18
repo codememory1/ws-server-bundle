@@ -10,7 +10,8 @@ final readonly class ConnectionOpenEvent
 
     public function __construct(
         public ServerInterface $server,
-        public int $connectionID
+        public int|string $connectionID,
+        public string $secWebsocketKey
     ) {
     }
 }

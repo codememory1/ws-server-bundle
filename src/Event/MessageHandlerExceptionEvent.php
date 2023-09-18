@@ -12,7 +12,7 @@ final readonly class MessageHandlerExceptionEvent
     public function __construct(
         public ServerInterface $server,
         public int $connectionID,
-        public Throwable $exception
+        public Throwable $throwable
     ) {
     }
 }

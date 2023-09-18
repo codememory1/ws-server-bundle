@@ -2,7 +2,7 @@
 
 namespace Codememory\WebSocketServerBundle\Interfaces;
 
-interface MessageEventHandlerInterface
+interface MessageEventListenerInterface
 {
     public function handle(ServerInterface $server, MessageInterface $message): void;
 }
